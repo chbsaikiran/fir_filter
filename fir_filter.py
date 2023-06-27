@@ -40,6 +40,28 @@ def impz(b,a=1):
     title(r'Step response')
     subplots_adjust(hspace=0.5)
     
+def overlap_and_add_filter(b,x,y):
+    y_temp1 = np.convolve(x[0:4000],b);
+    y_temp2 = np.convolve(x[4000:8000],b);
+    y_temp3 = np.convolve(x[8000:12000],b);
+    y_temp4 = np.convolve(x[12000:16000],b);
+    
+    y[0:4000,0] = y_temp1[0:4000];
+    y[4000:(4000+510),0] = y_temp1[4000:(4000+510)] + y_temp2[0:510];
+    y[(4000+510):(4000+510+3490),0] = y_temp2[510:(510+3490)];
+    i1 = (4000+510+3490);
+    i2 = (4000+510+3490+510);
+    y[i1:i2,0] = y_temp2[(510+3490):(510+3490+510)] + y_temp3[0:510];
+    i1 = (4000+510+3490+510);
+    i2 = (4000+510+3490+510+3490);
+    y[i1:i2,0] = y_temp3[510:(510+3490)];
+    i1 = (4000+510+3490+3490+510);
+    i2 = (4000+510+3490+3490+510+510);
+    y[i1:i2,0] = y_temp3[(510+3490):(510+3490+510)] + y_temp4[0:510];
+    i1 = (4000+510+3490+510+3490+510);
+    i2 = (4000+510+3490+510+3490+510+3490);
+    y[i1:i2,0] = y_temp4[510:(510+3490)];
+    
 
 np.random.seed(42)  # for reproducibility
 fs = 8000  # sampling rate, Hz
@@ -64,15 +86,18 @@ y_lfilter[4000:8000,0], zf = signal.lfilter(b, 1, yraw[4000:8000],zi=zf);
 y_lfilter[8000:12000,0], zf = signal.lfilter(b, 1,yraw[8000:12000] ,zi=zf);
 y_lfilter[12000:16000,0], zf = signal.lfilter(b, 1,yraw[12000:16000] ,zi=zf);
     
-#y_lfilter_full = signal.lfilter(b, 1, yraw)
-y_lfilter_full = np.fromfile("out_msvc.bin", dtype=np.float32)
-error = np.square(y_lfilter_full-float32(y_lfilter[:,0]))
+tot_outs = 16000;
+y_lfilter_full = np.zeros((len(ts),1));
+#y_lfilter_full[0:tot_outs,0] = signal.lfilter(b, 1, yraw)
+y_lfilter_full[0:tot_outs,0] = np.fromfile("out_msvc.bin", dtype=np.float32)
+#overlap_and_add_filter(b,yraw,y_lfilter_full);
+error = np.square(float32(y_lfilter_full[0:tot_outs,0])-float32(y_lfilter[0:tot_outs,0]))
 abs_error = 10*log10(np.sum(error)) - 10*log10(len(ts))
 
 plt.figure(figsize=[6.4, 2.4])
 
-plt.plot(ts, y_lfilter, label="Raw signal")
-plt.plot(ts, error, alpha=0.8, lw=3, label="SciPy lfilter")
+plt.plot(ts[0:tot_outs], y_lfilter[0:tot_outs,0], label="Raw signal")
+plt.plot(ts[0:tot_outs], error[0:tot_outs], alpha=0.8, lw=3, label="SciPy lfilter")
 
 plt.xlabel("Time / s")
 plt.ylabel("Amplitude")
