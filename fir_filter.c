@@ -47,7 +47,7 @@ Word16 float_to_fixed_conv_16bit(float x, Word32 qfactor)
 
 float fixed_to_float_conv(Word32 x, Word32 qfactor)
 {
-    return (((float)x)/(pow(2,qfactor)));
+    return (((float)x)/((float)(pow(2,qfactor))));
 }
 
 void fir_filter(float* in, float* coeffs, float* out, float *zi,int num_of_filt_coeffs, int frame_size)
@@ -175,18 +175,24 @@ int main(void)
 #endif
 #ifdef USE_FIXED_PT_CODE
         fir_filter_fxd_pt(in_fxd_pt, coeffs_fxd_pt, out_fxd_pt, zi_fxd_pt, 511, 4000);
+#ifdef PROFILE_CODE
+        gettimeofday(&end, NULL);
+        seconds = (end.tv_sec - start.tv_sec);
+        microseconds = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+        elapsed += microseconds*1e-6;
+#endif
         for (i = 0; i < 4000; i++)
         {
            out[i] = fixed_to_float_conv(out_fxd_pt[i],27);
         }
 #else
         fir_filter(in, coeffs, out, zi, 511, 4000);
-#endif
 #ifdef PROFILE_CODE
         gettimeofday(&end, NULL);
         seconds = (end.tv_sec - start.tv_sec);
         microseconds = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
-        elapsed += seconds + microseconds*1e-6;
+        elapsed += microseconds*1e-6;
+#endif
 #endif
         fwrite(out,4000,sizeof(float),fout);
     }
