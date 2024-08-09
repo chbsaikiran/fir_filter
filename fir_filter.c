@@ -101,12 +101,12 @@ void fir_filter_fxd_pt(Word32* in, Word32* coeffs, Word32* out, Word32 *zi,Word3
     Word32 i,j,count_r,index;
     Word64 sum;
 
-    for (i = 0; i < (num_of_filt_coeffs-1); i++)
+    for (i = (num_of_filt_coeffs - 2); i >= 0; i--)
     {
-        delay_line[i+1] = zi[i];
+        delay_line[i] = zi[((num_of_filt_coeffs - 2) - i)];
     }
 
-    index = 0;
+    index = (num_of_filt_coeffs - 1);
     for (i = 0; i < frame_size; i++)
     {
         delay_line[index] = in[i];
@@ -115,10 +115,10 @@ void fir_filter_fxd_pt(Word32* in, Word32* coeffs, Word32* out, Word32 *zi,Word3
         for (j = 0; j < num_of_filt_coeffs; j++)
         {
             sum = s64_mla_s32_s32(sum, coeffs[j], delay_line[count_r]); //Q2.29*Q2.29 = Q4.58
-            count_r = (count_r - 1 + num_of_filt_coeffs) % num_of_filt_coeffs;
+            count_r = (count_r + 1) % num_of_filt_coeffs;
         }
         out[i] = (Word32)(sum >> 31); //Q4.27
-        index = (index + 1) % num_of_filt_coeffs;
+        index = (index - 1 + num_of_filt_coeffs) % num_of_filt_coeffs;
     }
     index = frame_size - num_of_filt_coeffs + 1;
     for (i = 0; i < (num_of_filt_coeffs-1); i++)
