@@ -3,6 +3,11 @@
 #include <math.h>
 
 #define USE_FIXED_PT_CODE
+//#define PROFILE_CODE
+
+#ifdef PROFILE_CODE
+#include <sys/time.h>
+#endif
 
 #define ABS_FLOAT(x) ((x) > 0 ? (x):(0-(x)))
 
@@ -135,10 +140,15 @@ int main(void)
     Word32 coeffs_fxd_pt[511],out_fxd_pt[4000];
     Word32 in_fxd_pt[4000],zi_fxd_pt[510];
     int i,j;
+#ifdef PROFILE_CODE
+    long seconds;
+    long microseconds;
+    double elapsed = 0;
+#endif
 
-    fcoeffs = fopen("..\\fir_ceoffs_pygen.bin","rb");
-    finput = fopen("..\\input_pygen.bin", "rb");
-    fout = fopen("..\\out_msvc.bin","wb");
+    fcoeffs = fopen("fir_ceoffs_pygen.bin","rb");
+    finput = fopen("input_pygen.bin", "rb");
+    fout = fopen("out_arm_without_opt.bin","wb");
 
     fread(coeffs,511,sizeof(float),fcoeffs);
     for (i = 0; i < 511; i++)
@@ -151,7 +161,7 @@ int main(void)
         zi[i] = 0.0f;
         zi_fxd_pt[i] = 0;
     }
-
+    
     for (j = 0; j < 4; j++)
     {
         fread(in, 4000, sizeof(float), finput);
@@ -159,6 +169,10 @@ int main(void)
         {
            in_fxd_pt[i] = float_to_fixed_conv(in[i],29);
         }
+#ifdef PROFILE_CODE
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
+#endif
 #ifdef USE_FIXED_PT_CODE
         fir_filter_fxd_pt(in_fxd_pt, coeffs_fxd_pt, out_fxd_pt, zi_fxd_pt, 511, 4000);
         for (i = 0; i < 4000; i++)
@@ -168,8 +182,17 @@ int main(void)
 #else
         fir_filter(in, coeffs, out, zi, 511, 4000);
 #endif
+#ifdef PROFILE_CODE
+        gettimeofday(&end, NULL);
+        seconds = (end.tv_sec - start.tv_sec);
+        microseconds = ((seconds * 1000000) + end.tv_usec) - (start.tv_usec);
+        elapsed += seconds + microseconds*1e-6;
+#endif
         fwrite(out,4000,sizeof(float),fout);
     }
+#ifdef PROFILE_CODE
+    printf("elapsed_time = %lf\n",elapsed);
+#endif
 
     fclose(fcoeffs);
     fclose(finput);
