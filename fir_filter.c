@@ -98,7 +98,7 @@ void fir_filter(float* in, float* coeffs, float* out, float *zi,int num_of_filt_
 void fir_filter_fxd_pt(Word32* in, Word32* coeffs, Word32* out, Word32 *zi,Word32 num_of_filt_coeffs, Word32 frame_size)
 {
     Word32 delay_line[511];
-    Word32 i,j,count_r,count_f = 0,index;
+    Word32 i,j,count_r,index;
     Word64 sum;
 
     for (i = 0; i < (num_of_filt_coeffs-1); i++)
@@ -106,37 +106,19 @@ void fir_filter_fxd_pt(Word32* in, Word32* coeffs, Word32* out, Word32 *zi,Word3
         delay_line[i+1] = zi[i];
     }
 
-    count_f = 0;
+    index = 0;
     for (i = 0; i < frame_size; i++)
     {
-        if (count_f >= num_of_filt_coeffs)
-        {
-            index = 0;
-            count_f = 0;
-        }
-        else
-        {
-            index = count_f;
-        }
         delay_line[index] = in[i];
         count_r = index;
         sum = 0;
         for (j = 0; j < num_of_filt_coeffs; j++)
         {
-            if (count_r < 0)
-            {
-                index = count_r + num_of_filt_coeffs;
-            }
-            else
-            {
-                index = count_r;
-            }
-            //sum += coeffs[j] * delay_line[index];
-            sum = s64_mla_s32_s32(sum, coeffs[j], delay_line[index]); //Q2.29*Q2.29 = Q4.58
-            count_r--;
+            sum = s64_mla_s32_s32(sum, coeffs[j], delay_line[count_r]); //Q2.29*Q2.29 = Q4.58
+            count_r = (count_r - 1 + num_of_filt_coeffs) % num_of_filt_coeffs;
         }
         out[i] = (Word32)(sum >> 31); //Q4.27
-        count_f++;
+        index = (index + 1) % num_of_filt_coeffs;
     }
     index = frame_size - num_of_filt_coeffs + 1;
     for (i = 0; i < (num_of_filt_coeffs-1); i++)
@@ -154,9 +136,9 @@ int main(void)
     Word32 in_fxd_pt[4000],zi_fxd_pt[510];
     int i,j;
 
-    fcoeffs = fopen("fir_ceoffs_pygen.bin","rb");
-    finput = fopen("input_pygen.bin", "rb");
-    fout = fopen("out_msvc.bin","wb");
+    fcoeffs = fopen("..\\fir_ceoffs_pygen.bin","rb");
+    finput = fopen("..\\input_pygen.bin", "rb");
+    fout = fopen("..\\out_msvc.bin","wb");
 
     fread(coeffs,511,sizeof(float),fcoeffs);
     for (i = 0; i < 511; i++)
